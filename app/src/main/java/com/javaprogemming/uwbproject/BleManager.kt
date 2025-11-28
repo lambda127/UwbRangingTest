@@ -1,0 +1,214 @@
+package com.javaprogemming.uwbproject
+
+import android.annotation.SuppressLint
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothGatt
+import android.bluetooth.BluetoothGattCallback
+import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattServer
+import android.bluetooth.BluetoothGattServerCallback
+import android.bluetooth.BluetoothGattService
+import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
+import android.bluetooth.le.AdvertiseCallback
+import android.bluetooth.le.AdvertiseData
+import android.bluetooth.le.AdvertiseSettings
+import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanFilter
+import android.bluetooth.le.ScanResult
+import android.bluetooth.le.ScanSettings
+import android.content.Context
+import android.os.ParcelUuid
+import android.util.Log
+import java.util.UUID
+
+@SuppressLint("MissingPermission") // Permissions are checked in MainActivity
+class BleManager(private val context: Context, private val onDeviceFound: (BluetoothDevice) -> Unit, private val onDataReceived: (String, ByteArray) -> Unit) {
+
+    private val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+    private val bluetoothAdapter = bluetoothManager.adapter
+    private val advertiser = bluetoothAdapter.bluetoothLeAdvertiser
+    private val scanner = bluetoothAdapter.bluetoothLeScanner
+    private var gattServer: BluetoothGattServer? = null
+
+    companion object {
+        val SERVICE_UUID: UUID = UUID.fromString("6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
+        val CHARACTERISTIC_UUID: UUID = UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
+        private const val TAG = "BleManager"
+    }
+
+    private val connectedGatts = mutableMapOf<String, BluetoothGatt>()
+
+    fun startAdvertising() {
+        val settings = AdvertiseSettings.Builder()
+            .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
+            .setConnectable(true)
+            .setTimeout(0)
+            .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
+            .build()
+
+        val data = AdvertiseData.Builder()
+            .setIncludeDeviceName(true)
+            .addServiceUuid(ParcelUuid(SERVICE_UUID))
+            .build()
+
+        advertiser.startAdvertising(settings, data, advertiseCallback)
+        setupGattServer()
+    }
+
+    fun stopAdvertising() {
+        advertiser.stopAdvertising(advertiseCallback)
+        gattServer?.close()
+    }
+
+    fun startScanning() {
+        val filter = ScanFilter.Builder()
+            .setServiceUuid(ParcelUuid(SERVICE_UUID))
+            .build()
+
+        val settings = ScanSettings.Builder()
+            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+            .build()
+
+        scanner.startScan(listOf(filter), settings, scanCallback)
+    }
+
+    fun stopScanning() {
+        scanner.stopScan(scanCallback)
+    }
+
+    fun connectToDevice(device: BluetoothDevice) {
+        device.connectGatt(context, false, gattCallback)
+    }
+
+    fun writeData(deviceAddress: String, data: ByteArray) {
+        val gatt = connectedGatts[deviceAddress]
+        if (gatt != null) {
+            val service = gatt.getService(SERVICE_UUID)
+            val characteristic = service?.getCharacteristic(CHARACTERISTIC_UUID)
+            if (characteristic != null) {
+                characteristic.value = data
+                characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                gatt.writeCharacteristic(characteristic)
+            }
+        }
+    }
+
+    fun setLocalUwbAddress(address: ByteArray) {
+        val service = gattServer?.getService(SERVICE_UUID)
+        val characteristic = service?.getCharacteristic(CHARACTERISTIC_UUID)
+        characteristic?.value = address
+    }
+
+    fun readUwbAddress(deviceAddress: String) {
+        val gatt = connectedGatts[deviceAddress]
+        if (gatt != null) {
+            val service = gatt.getService(SERVICE_UUID)
+            val characteristic = service?.getCharacteristic(CHARACTERISTIC_UUID)
+            if (characteristic != null) {
+                gatt.readCharacteristic(characteristic)
+            }
+        }
+    }
+
+    private val advertiseCallback = object : AdvertiseCallback() {
+        override fun onStartSuccess(settingsInEffect: AdvertiseSettings?) {
+            Log.d(TAG, "Advertising started")
+        }
+
+        override fun onStartFailure(errorCode: Int) {
+            Log.e(TAG, "Advertising failed: $errorCode")
+        }
+    }
+
+    private val scanCallback = object : ScanCallback() {
+        override fun onScanResult(callbackType: Int, result: ScanResult?) {
+            result?.device?.let {
+                onDeviceFound(it)
+            }
+        }
+    }
+
+    private fun setupGattServer() {
+        gattServer = bluetoothManager.openGattServer(context, gattServerCallback)
+        val service = BluetoothGattService(SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY)
+        val characteristic = BluetoothGattCharacteristic(
+            CHARACTERISTIC_UUID,
+            BluetoothGattCharacteristic.PROPERTY_READ or BluetoothGattCharacteristic.PROPERTY_WRITE,
+            BluetoothGattCharacteristic.PERMISSION_READ or BluetoothGattCharacteristic.PERMISSION_WRITE
+        )
+        service.addCharacteristic(characteristic)
+        gattServer?.addService(service)
+    }
+
+    private val gattServerCallback = object : BluetoothGattServerCallback() {
+        override fun onConnectionStateChange(device: BluetoothDevice?, status: Int, newState: Int) {
+            super.onConnectionStateChange(device, status, newState)
+            Log.d(TAG, "Server connection state: $newState")
+        }
+
+        override fun onCharacteristicWriteRequest(
+            device: BluetoothDevice?,
+            requestId: Int,
+            characteristic: BluetoothGattCharacteristic?,
+            preparedWrite: Boolean,
+            responseNeeded: Boolean,
+            offset: Int,
+            value: ByteArray?
+        ) {
+            super.onCharacteristicWriteRequest(device, requestId, characteristic, preparedWrite, responseNeeded, offset, value)
+            if (characteristic?.uuid == CHARACTERISTIC_UUID) {
+                value?.let {
+                    onDataReceived(device?.address ?: "", it)
+                }
+                if (responseNeeded) {
+                    gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null)
+                }
+            }
+        }
+        
+        override fun onCharacteristicReadRequest(
+            device: BluetoothDevice?,
+            requestId: Int,
+            offset: Int,
+            characteristic: BluetoothGattCharacteristic?
+        ) {
+             super.onCharacteristicReadRequest(device, requestId, offset, characteristic)
+             if (characteristic?.uuid == CHARACTERISTIC_UUID) {
+                 gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, characteristic.value)
+             }
+        }
+    }
+
+    private val gattCallback = object : BluetoothGattCallback() {
+        override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
+                gatt?.discoverServices()
+                connectedGatts[gatt?.device?.address ?: ""] = gatt!!
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                connectedGatts.remove(gatt?.device?.address)
+            }
+        }
+
+        override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
+            // Ready to write/read
+        }
+
+        override fun onCharacteristicRead(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            status: Int
+        ) {
+            if (status == BluetoothGatt.GATT_SUCCESS && characteristic.uuid == CHARACTERISTIC_UUID) {
+                onDataReceived(gatt.device.address, characteristic.value) // Reuse onDataReceived for Read result too?
+                // Or maybe a separate callback?
+                // For simplicity, let's assume onDataReceived handles both "Received via Write" and "Received via Read".
+                // But wait, the format might be different.
+                // Advertiser shares ONLY Address.
+                // Controller shares Address + SessionID.
+                // We can distinguish by length or context.
+            }
+        }
+    }
+}
