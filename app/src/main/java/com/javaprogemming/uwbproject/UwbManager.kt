@@ -48,13 +48,15 @@ class UwbManager(private val context: Context, private val onRangingResult: (Flo
                 val parameters = RangingParameters(
                     uwbConfigType = RangingParameters.CONFIG_UNICAST_DS_TWR,
                     sessionId = sessionId,
+                    subSessionId = 0,
                     sessionKeyInfo = null,
+                    subSessionKeyInfo = null,
                     complexChannel = null,
                     peerDevices = listOf(uwbDevice),
                     updateRateType = RangingParameters.RANGING_UPDATE_RATE_AUTOMATIC
                 )
 
-                rangingJob = clientSessionScope.prepareSession(parameters).sessionFlow
+                clientSessionScope.prepareSession(parameters)
                     .onEach { result ->
                         when (result) {
                             is RangingResult.RangingResultPosition -> {
@@ -102,13 +104,15 @@ class UwbManager(private val context: Context, private val onRangingResult: (Flo
                 val parameters = RangingParameters(
                     uwbConfigType = RangingParameters.CONFIG_UNICAST_DS_TWR,
                     sessionId = sessionId,
+                    subSessionId = 0,
                     sessionKeyInfo = null,
+                    subSessionKeyInfo = null,
                     complexChannel = null,
                     peerDevices = listOf(uwbDevice),
                     updateRateType = RangingParameters.RANGING_UPDATE_RATE_AUTOMATIC
                 )
 
-                rangingJob = clientSessionScope.prepareSession(parameters).sessionFlow
+                clientSessionScope.prepareSession(parameters)
                     .onEach { result ->
                         when (result) {
                             is RangingResult.RangingResultPosition -> {
