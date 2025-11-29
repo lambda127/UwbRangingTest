@@ -13,6 +13,20 @@ import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.RelativeLayout
+import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import kotlinx.coroutines.launch
+import java.nio.ByteBuffer
+import kotlin.random.Random
+
+class MainActivity : ComponentActivity() {
 
     private lateinit var bleManager: BleManager
     private lateinit var uwbManager: UwbManager
@@ -43,7 +57,6 @@ import android.widget.ImageView
         loadingText = findViewById(R.id.loadingText)
         overlayIntro = findViewById(R.id.overlayIntro)
         redDot = findViewById(R.id.redDot)
-        targetDot = findViewById(R.id.targetDot)
         targetDot = findViewById(R.id.targetDot)
         bottomPanel = findViewById(R.id.bottomPanel)
 
