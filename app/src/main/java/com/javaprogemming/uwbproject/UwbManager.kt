@@ -62,6 +62,7 @@ class UwbManager(private val context: Context, private val onRangingResult: (Flo
 
                 clientSessionScope.prepareSession(parameters)
                     .onEach { result ->
+                        Log.d(TAG, "Ranging Result (Controller): $result")
                         when (result) {
                             is RangingResult.RangingResultPosition -> {
                                 result.position.distance?.let {
@@ -119,6 +120,7 @@ class UwbManager(private val context: Context, private val onRangingResult: (Flo
 
                 clientSessionScope.prepareSession(parameters)
                     .onEach { result ->
+                        Log.d(TAG, "Ranging Result (Controlee): $result")
                         when (result) {
                             is RangingResult.RangingResultPosition -> {
                                 result.position.distance?.let {
