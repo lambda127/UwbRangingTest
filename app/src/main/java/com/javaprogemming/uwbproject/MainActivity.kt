@@ -63,7 +63,7 @@ class MainActivity : ComponentActivity() {
                     if (data.size == 2 || data.size == 8) { // Address size can vary (2 for short, 8 for extended)
                         // This is Peer Address (Read by Controller)
                         val peerAddressBytes = data
-                        val sessionId = Random.nextInt()
+                        val sessionId = kotlin.math.abs(Random.nextInt())
                         val sessionKey = Random.nextBytes(8) // Generate 8-byte session key
                         
                         statusMessage = "Read Peer Address. Starting Controller..."

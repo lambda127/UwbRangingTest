@@ -55,7 +55,7 @@ class UwbManager(private val context: Context, private val onRangingResult: (Flo
                     subSessionId = 0,
                     sessionKeyInfo = sessionKey,
                     subSessionKeyInfo = null,
-                    complexChannel = null,
+                    complexChannel = UwbComplexChannel(9, 11),
                     peerDevices = listOf(uwbDevice),
                     updateRateType = RangingParameters.RANGING_UPDATE_RATE_AUTOMATIC
                 )
@@ -113,7 +113,7 @@ class UwbManager(private val context: Context, private val onRangingResult: (Flo
                     subSessionId = 0,
                     sessionKeyInfo = sessionKey,
                     subSessionKeyInfo = null,
-                    complexChannel = null,
+                    complexChannel = UwbComplexChannel(9, 11),
                     peerDevices = listOf(uwbDevice),
                     updateRateType = RangingParameters.RANGING_UPDATE_RATE_AUTOMATIC
                 )
