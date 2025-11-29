@@ -24,8 +24,6 @@ import kotlinx.coroutines.launch
 import java.nio.ByteBuffer
 import kotlin.random.Random
 
-
-
 class MainActivity : ComponentActivity() {
 
     private lateinit var bleManager: BleManager
@@ -41,6 +39,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var loadingText: TextView
     private lateinit var overlayIntro: RelativeLayout
     private lateinit var redDot: View
+    private lateinit var targetDot: ImageView
     private lateinit var bottomPanel: View
     private val handler = Handler(Looper.getMainLooper())
 
@@ -55,6 +54,7 @@ class MainActivity : ComponentActivity() {
         loadingText = findViewById(R.id.loadingText)
         overlayIntro = findViewById(R.id.overlayIntro)
         redDot = findViewById(R.id.redDot)
+        targetDot = findViewById(R.id.targetDot)
         bottomPanel = findViewById(R.id.bottomPanel)
 
         // Intro Animation
@@ -101,16 +101,26 @@ class MainActivity : ComponentActivity() {
                 loadingText.text = status
                 loadingText.alpha = 1f
                 loadingText.visibility = View.VISIBLE
+                
+                if (distance != null && azimuth != null) {
+                    updateTargetDotPosition(distance, azimuth)
+                }
             }
         }
 
         bleManager = BleManager(this,
             onDeviceFound = { device ->
-                if (!discoveredDevices.any { it.address == device.address }) {
-                    discoveredDevices.add(device)
-                    Log.d("MainActivity", "Device found: ${device.address}")
-                    // Auto-connect to the first found device for now, or logic to select
-                    connectToDevice(device)
+                if (isWorking && isController) { // Only if we haven't decided role or are Controller
+                    if (!discoveredDevices.any { it.address == device.address }) {
+                        discoveredDevices.add(device)
+                        Log.d("MainActivity", "Device found: ${device.address}. Becoming Controller.")
+                        
+                        // We found a device first! We are Controller.
+                        // Stop advertising so we don't confuse others (optional, but good practice)
+                        bleManager.stopAdvertising()
+                        
+                        connectToDevice(device)
+                    }
                 }
             },
             onDataReceived = { address, data ->
@@ -120,30 +130,50 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startAction() {
+        Toast.makeText(this, "Start Button Clicked", Toast.LENGTH_SHORT).show()
         startText.setBackgroundResource(R.drawable.btn_green) // Visual feedback if needed
         startWorking()
         startDotAnimations()
     }
 
     private fun resetAction() {
+        Toast.makeText(this, "Stop Button Clicked", Toast.LENGTH_SHORT).show()
         stopWorking()
         stopDotAnimations()
         // Reset UI state if needed
+        targetDot.visibility = View.INVISIBLE
     }
 
     private fun startWorking() {
         isWorking = true
         discoveredDevices.clear()
         
-        // Default to Controller for "Start" button as per plan
-        isController = true 
+        // Dynamic Role Switching:
+        // 1. Start Advertising (to be found -> become Controlee)
+        // 2. Start Scanning (to find others -> become Controller)
         
-        if (isController) {
-            Log.d("MainActivity", "Starting Controller: Scanning...")
-            bleManager.startScanning()
-        } else {
-            // Logic for Controlee if we add a switch later
+        // Default state: We are open to being either.
+        // Let's assume isController = true initially to allow scanning logic, 
+        // but we will flip it if we receive data first.
+        isController = true 
+
+        Log.d("MainActivity", "Starting Dynamic Role Search...")
+
+        // Start Advertising (Controlee side)
+        lifecycleScope.launch {
+            try {
+                val localAddress = uwbManager.prepareControleeSession()
+                bleManager.setLocalUwbAddress(localAddress.address)
+                bleManager.startAdvertising()
+                Log.d("MainActivity", "Advertising started (Candidate Controlee)")
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Failed to start advertising", e)
+            }
         }
+
+        // Start Scanning (Controller side)
+        bleManager.startScanning()
+        Log.d("MainActivity", "Scanning started (Candidate Controller)")
     }
 
     private fun stopWorking() {
@@ -197,7 +227,12 @@ class MainActivity : ComponentActivity() {
                 val addrBytes = ByteArray(addrLen)
                 buffer.get(addrBytes)
                 
-                Log.d("MainActivity", "Received Params. Starting Controlee...")
+                Log.d("MainActivity", "Received Params. Becoming Controlee...")
+                
+                // We received data! We are Controlee.
+                isController = false
+                bleManager.stopScanning() // Stop scanning since we are being controlled
+                
                 uwbManager.startRangingWithPreparedSession(addrBytes, sessionId, sessionKey)
             }
         } catch (e: Exception) {
@@ -233,6 +268,32 @@ class MainActivity : ComponentActivity() {
             val dot = findViewById<View>(id)
             dot?.clearAnimation()
         }
+    }
+
+    private fun updateTargetDotPosition(distance: Float, azimuth: Float) {
+        val maxDistance = 5.0f // Max distance in meters to map to screen edge
+        val screenCenterX = redDot.x + redDot.width / 2
+        val screenCenterY = redDot.y + redDot.height / 2
+        val maxScreenRadius = 300f // Approximate radius in pixels
+
+        // Calculate position offset
+        // Azimuth is in radians. 0 is forward? Let's assume standard math: 0 is East, but UWB might be different.
+        // Usually UWB azimuth 0 is straight ahead (North in screen coordinates if phone is portrait).
+        // Let's assume 0 is Up (Negative Y).
+        
+        // Convert azimuth to screen coordinates
+        // x = distance * sin(azimuth)
+        // y = distance * cos(azimuth)
+        // We need to scale distance.
+        
+        val scale = Math.min(distance, maxDistance) / maxDistance * maxScreenRadius
+        
+        val offsetX = scale * kotlin.math.sin(azimuth.toDouble()).toFloat()
+        val offsetY = -scale * kotlin.math.cos(azimuth.toDouble()).toFloat() // Negative Y is Up
+
+        targetDot.x = screenCenterX + offsetX - targetDot.width / 2
+        targetDot.y = screenCenterY + offsetY - targetDot.height / 2
+        targetDot.visibility = View.VISIBLE
     }
 
     private fun checkPermissions() {
