@@ -100,9 +100,18 @@ class BleManager(private val context: Context, private val onDeviceFound: (Bluet
     }
 
     fun setLocalUwbAddress(address: ByteArray) {
+        if (gattServer == null) {
+            Log.e(TAG, "GATT Server is null. Cannot set local UWB address. Make sure to start advertising first.")
+            return
+        }
         val service = gattServer?.getService(SERVICE_UUID)
         val characteristic = service?.getCharacteristic(CHARACTERISTIC_UUID)
-        characteristic?.value = address
+        if (characteristic == null) {
+            Log.e(TAG, "Characteristic not found in GATT Server.")
+            return
+        }
+        characteristic.value = address
+        Log.d(TAG, "Local UWB Address set in GATT Server: ${address.size} bytes")
     }
 
     fun readUwbAddress(deviceAddress: String) {

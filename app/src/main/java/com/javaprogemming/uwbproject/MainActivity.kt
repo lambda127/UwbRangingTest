@@ -206,8 +206,8 @@ class MainActivity : ComponentActivity() {
             lifecycleScope.launch {
                 val addr = uwbManager.prepareControleeSession()
                 Log.d("MainActivity", "Local UWB Address: ${addr.address.contentToString()}")
-                bleManager.setLocalUwbAddress(addr.address)
                 bleManager.startAdvertising()
+                bleManager.setLocalUwbAddress(addr.address)
                 statusMessage = "Advertising..."
             }
         }
