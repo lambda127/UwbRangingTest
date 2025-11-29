@@ -56,7 +56,7 @@ class BleManager(
 
         val data = AdvertiseData.Builder()
             .setIncludeDeviceName(false)
-            .addServiceUuid(ParcelUuid(SERVICE_UUID))
+            // .addServiceUuid(ParcelUuid(SERVICE_UUID)) // Removed to save space (31 bytes limit). Service Data already contains the UUID.
             .addServiceData(ParcelUuid(SERVICE_UUID), java.nio.ByteBuffer.allocate(4).putInt(deviceId).array())
             .build()
 
@@ -83,7 +83,7 @@ class BleManager(
 
     fun startScanning() {
         val filter = ScanFilter.Builder()
-            .setServiceUuid(ParcelUuid(SERVICE_UUID))
+            .setServiceData(ParcelUuid(SERVICE_UUID), null) // Filter by Service Data UUID since we removed addServiceUuid
             .build()
 
         val settings = ScanSettings.Builder()
@@ -120,7 +120,8 @@ class BleManager(
 
     fun setLocalUwbAddress(address: ByteArray) {
         if (gattServer == null) {
-            Log.e(TAG, "GATT Server is null. Cannot set local UWB address. Make sure to start advertising first.")
+            Log.w(TAG, "GATT Server is null. Storing address as pending.")
+            pendingLocalAddress = address
             return
         }
         val service = gattServer?.getService(SERVICE_UUID)
