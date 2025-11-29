@@ -42,10 +42,26 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        uwbManager = UwbManager(this) { distance ->
+        uwbManager = UwbManager(this) { result ->
+            val distance = result.position.distance?.value
+            val azimuth = result.position.azimuth?.value
+            val elevation = result.position.elevation?.value
+            
             rangingDistance = distance
-            statusMessage = "Ranging: ${"%.2f".format(distance)} m"
-            Log.d("MainActivity", "Ranging result: $distance")
+            
+            val sb = StringBuilder()
+            if (distance != null) {
+                sb.append("Dist: %.2f m".format(distance))
+            }
+            if (azimuth != null) {
+                sb.append(", Az: %.0f°".format(Math.toDegrees(azimuth.toDouble())))
+            }
+            if (elevation != null) {
+                sb.append(", El: %.0f°".format(Math.toDegrees(elevation.toDouble())))
+            }
+            
+            statusMessage = sb.toString()
+            Log.d("MainActivity", "Ranging result: $statusMessage")
         }
 
         bleManager = BleManager(this,
@@ -224,6 +240,7 @@ class MainActivity : ComponentActivity() {
         Log.d("MainActivity", "Stopping...")
         bleManager.stopScanning()
         bleManager.stopAdvertising()
+        uwbManager.stopRanging()
     }
 
     @Composable

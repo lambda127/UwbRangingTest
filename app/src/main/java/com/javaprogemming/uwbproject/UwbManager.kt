@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
-class UwbManager(private val context: Context, private val onRangingResult: (Float) -> Unit) {
+class UwbManager(private val context: Context, private val onRangingResult: (RangingResult.RangingResultPosition) -> Unit) {
 
     private val scope = CoroutineScope(Dispatchers.IO)
     private var rangingJob: Job? = null
@@ -65,9 +65,7 @@ class UwbManager(private val context: Context, private val onRangingResult: (Flo
                         Log.d(TAG, "Ranging Result (Controller): $result")
                         when (result) {
                             is RangingResult.RangingResultPosition -> {
-                                result.position.distance?.let {
-                                    onRangingResult(it.value)
-                                }
+                                onRangingResult(result)
                             }
                             is RangingResult.RangingResultPeerDisconnected -> {
                                 Log.d(TAG, "Peer disconnected")
@@ -123,9 +121,7 @@ class UwbManager(private val context: Context, private val onRangingResult: (Flo
                         Log.d(TAG, "Ranging Result (Controlee): $result")
                         when (result) {
                             is RangingResult.RangingResultPosition -> {
-                                result.position.distance?.let {
-                                    onRangingResult(it.value)
-                                }
+                                onRangingResult(result)
                             }
                              is RangingResult.RangingResultPeerDisconnected -> {
                                 Log.d(TAG, "Peer disconnected")
@@ -145,5 +141,10 @@ class UwbManager(private val context: Context, private val onRangingResult: (Flo
             uwbManager = UwbManager.createInstance(context)
         }
         return uwbManager.controleeSessionScope().localAddress
+    }
+
+    fun stopRanging() {
+        rangingJob?.cancel()
+        scope.coroutineContext.cancelChildren()
     }
 }
