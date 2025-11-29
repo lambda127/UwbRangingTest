@@ -145,7 +145,7 @@ class BleManager(private val context: Context, private val onDeviceFound: (Bluet
     private val gattServerCallback = object : BluetoothGattServerCallback() {
         override fun onConnectionStateChange(device: BluetoothDevice?, status: Int, newState: Int) {
             super.onConnectionStateChange(device, status, newState)
-            Log.d(TAG, "Server connection state: $newState")
+            Log.d(TAG, "Server connection state for ${device?.address}: $newState")
         }
 
         override fun onCharacteristicWriteRequest(
@@ -160,6 +160,7 @@ class BleManager(private val context: Context, private val onDeviceFound: (Bluet
             super.onCharacteristicWriteRequest(device, requestId, characteristic, preparedWrite, responseNeeded, offset, value)
             if (characteristic?.uuid == CHARACTERISTIC_UUID) {
                 value?.let {
+                    Log.d(TAG, "Server received write request from ${device?.address}: ${it.size} bytes")
                     onDataReceived(device?.address ?: "", it)
                 }
                 if (responseNeeded) {
@@ -184,15 +185,17 @@ class BleManager(private val context: Context, private val onDeviceFound: (Bluet
     private val gattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
+                Log.d(TAG, "Connected to GATT server: ${gatt?.device?.address}")
                 gatt?.discoverServices()
                 connectedGatts[gatt?.device?.address ?: ""] = gatt!!
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                Log.d(TAG, "Disconnected from GATT server: ${gatt?.device?.address}")
                 connectedGatts.remove(gatt?.device?.address)
             }
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
-            // Ready to write/read
+            Log.d(TAG, "Services discovered for ${gatt?.device?.address}: status=$status")
         }
 
         override fun onCharacteristicRead(
@@ -201,6 +204,7 @@ class BleManager(private val context: Context, private val onDeviceFound: (Bluet
             status: Int
         ) {
             if (status == BluetoothGatt.GATT_SUCCESS && characteristic.uuid == CHARACTERISTIC_UUID) {
+                Log.d(TAG, "Read characteristic from ${gatt.device.address}: ${characteristic.value.size} bytes")
                 onDataReceived(gatt.device.address, characteristic.value) // Reuse onDataReceived for Read result too?
                 // Or maybe a separate callback?
                 // For simplicity, let's assume onDataReceived handles both "Received via Write" and "Received via Read".

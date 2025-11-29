@@ -33,7 +33,7 @@ class UwbManager(private val context: Context, private val onRangingResult: (Flo
         private const val TAG = "UwbManager"
     }
 
-    fun startRangingAsController(peerAddressBytes: ByteArray, sessionId: Int) {
+    fun startRangingAsController(peerAddressBytes: ByteArray, sessionId: Int, onSessionStarted: (UwbAddress) -> Unit) {
         scope.launch {
             try {
                 // Ensure manager is initialized
@@ -42,6 +42,10 @@ class UwbManager(private val context: Context, private val onRangingResult: (Flo
                 }
                 
                 val clientSessionScope = uwbManager.controllerSessionScope()
+                val localAddress = clientSessionScope.localAddress
+                Log.d(TAG, "Controller Local Address: $localAddress")
+                onSessionStarted(localAddress)
+                
                 val peerAddress = UwbAddress(peerAddressBytes)
                 val uwbDevice = UwbDevice(peerAddress)
                 
@@ -85,6 +89,7 @@ class UwbManager(private val context: Context, private val onRangingResult: (Flo
         }
         val scope = uwbManager.controleeSessionScope()
         controleeSessionScope = scope
+        Log.d(TAG, "Controlee Local Address: ${scope.localAddress}")
         return scope.localAddress
     }
 
