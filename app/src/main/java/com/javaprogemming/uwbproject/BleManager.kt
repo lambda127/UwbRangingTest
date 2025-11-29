@@ -39,6 +39,7 @@ class BleManager(private val context: Context, private val onDeviceFound: (Bluet
     }
 
     private val connectedGatts = mutableMapOf<String, BluetoothGatt>()
+    private var pendingLocalAddress: ByteArray? = null
 
     fun startAdvertising() {
         val settings = AdvertiseSettings.Builder()
@@ -107,7 +108,8 @@ class BleManager(private val context: Context, private val onDeviceFound: (Bluet
         val service = gattServer?.getService(SERVICE_UUID)
         val characteristic = service?.getCharacteristic(CHARACTERISTIC_UUID)
         if (characteristic == null) {
-            Log.e(TAG, "Characteristic not found in GATT Server.")
+            Log.w(TAG, "Characteristic not found in GATT Server. Storing address as pending.")
+            pendingLocalAddress = address
             return
         }
         characteristic.value = address
@@ -156,6 +158,25 @@ class BleManager(private val context: Context, private val onDeviceFound: (Bluet
     }
 
     private val gattServerCallback = object : BluetoothGattServerCallback() {
+        override fun onServiceAdded(status: Int, service: BluetoothGattService?) {
+            super.onServiceAdded(status, service)
+            if (status == BluetoothGatt.GATT_SUCCESS && service?.uuid == SERVICE_UUID) {
+                Log.d(TAG, "Service added successfully.")
+                pendingLocalAddress?.let { address ->
+                    val characteristic = service.getCharacteristic(CHARACTERISTIC_UUID)
+                    if (characteristic != null) {
+                        characteristic.value = address
+                        Log.d(TAG, "Pending Local UWB Address set in GATT Server: ${address.size} bytes")
+                        pendingLocalAddress = null
+                    } else {
+                        Log.e(TAG, "Characteristic not found in added service.")
+                    }
+                }
+            } else {
+                Log.e(TAG, "Failed to add service: status=$status")
+            }
+        }
+
         override fun onConnectionStateChange(device: BluetoothDevice?, status: Int, newState: Int) {
             super.onConnectionStateChange(device, status, newState)
             Log.d(TAG, "Server connection state for ${device?.address}: $newState")
