@@ -27,9 +27,9 @@ import java.util.UUID
 class BleManager(private val context: Context, private val onDeviceFound: (BluetoothDevice) -> Unit, private val onDataReceived: (String, ByteArray) -> Unit) {
 
     private val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-    private val bluetoothAdapter = bluetoothManager.adapter
-    private val advertiser = bluetoothAdapter.bluetoothLeAdvertiser
-    private val scanner = bluetoothAdapter.bluetoothLeScanner
+    private val bluetoothAdapter: BluetoothAdapter? = bluetoothManager.adapter
+    private val advertiser = bluetoothAdapter?.bluetoothLeAdvertiser
+    private val scanner = bluetoothAdapter?.bluetoothLeScanner
     private var gattServer: BluetoothGattServer? = null
 
     companion object {
@@ -58,12 +58,16 @@ class BleManager(private val context: Context, private val onDeviceFound: (Bluet
             .setIncludeDeviceName(true)
             .build()
 
+        if (advertiser == null) {
+            Log.e(TAG, "Bluetooth LE Advertiser is null")
+            return
+        }
         advertiser.startAdvertising(settings, data, scanResponse, advertiseCallback)
         setupGattServer()
     }
 
     fun stopAdvertising() {
-        advertiser.stopAdvertising(advertiseCallback)
+        advertiser?.stopAdvertising(advertiseCallback)
         gattServer?.close()
     }
 
@@ -76,11 +80,15 @@ class BleManager(private val context: Context, private val onDeviceFound: (Bluet
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build()
 
+        if (scanner == null) {
+            Log.e(TAG, "Bluetooth LE Scanner is null")
+            return
+        }
         scanner.startScan(listOf(filter), settings, scanCallback)
     }
 
     fun stopScanning() {
-        scanner.stopScan(scanCallback)
+        scanner?.stopScan(scanCallback)
     }
 
     fun connectToDevice(device: BluetoothDevice) {
