@@ -125,6 +125,16 @@ class MainActivity : ComponentActivity() {
             },
             onDataReceived = { address, data ->
                 handleDataReceived(address, data)
+            },
+            onClientConnected = { device ->
+                // Someone connected to us! We are likely Controlee.
+                // Stop scanning to avoid trying to become Controller.
+                if (isWorking && isController) {
+                    Log.d("MainActivity", "Client connected: ${device.address}. Becoming Controlee.")
+                    isController = false
+                    bleManager.stopScanning()
+                    // Keep advertising/server open so they can interact.
+                }
             }
         )
     }
@@ -181,6 +191,7 @@ class MainActivity : ComponentActivity() {
         Log.d("MainActivity", "Stopping...")
         bleManager.stopScanning()
         bleManager.stopAdvertising()
+        bleManager.closeServer()
         uwbManager.stopRanging()
     }
 
@@ -198,7 +209,12 @@ class MainActivity : ComponentActivity() {
     private fun handleDataReceived(address: String, data: ByteArray) {
         try {
             Log.d("MainActivity", "Data received from $address: ${data.size} bytes")
-            if (data.size == 2 || data.size == 8) {
+            if (data.isEmpty()) {
+                Log.w("MainActivity", "Received empty data. Ignoring.")
+                return
+            }
+
+            if (data.size == 2 || data.size == 8) { // Assuming UWB address is 2 or 8 bytes
                 // Peer Address (Controller logic)
                 val peerAddressBytes = data
                 val sessionId = kotlin.math.abs(Random.nextInt())
@@ -217,7 +233,7 @@ class MainActivity : ComponentActivity() {
                         bleManager.writeData(address, buffer.array())
                     }
                 }
-            } else {
+            } else if (data.size > 12) { // Minimum size for Params (4+8+1+2)
                 // Params (Controlee logic - if we were controlee)
                 val buffer = ByteBuffer.wrap(data)
                 val sessionId = buffer.int
@@ -234,6 +250,8 @@ class MainActivity : ComponentActivity() {
                 bleManager.stopScanning() // Stop scanning since we are being controlled
                 
                 uwbManager.startRangingWithPreparedSession(addrBytes, sessionId, sessionKey)
+            } else {
+                Log.w("MainActivity", "Received data of unexpected size: ${data.size}")
             }
         } catch (e: Exception) {
             Log.e("MainActivity", "Error parsing data", e)

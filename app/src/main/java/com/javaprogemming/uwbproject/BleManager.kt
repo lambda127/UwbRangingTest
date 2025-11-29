@@ -24,7 +24,12 @@ import android.util.Log
 import java.util.UUID
 
 @SuppressLint("MissingPermission") // Permissions are checked in MainActivity
-class BleManager(private val context: Context, private val onDeviceFound: (BluetoothDevice) -> Unit, private val onDataReceived: (String, ByteArray) -> Unit) {
+class BleManager(
+    private val context: Context,
+    private val onDeviceFound: (BluetoothDevice) -> Unit,
+    private val onDataReceived: (String, ByteArray) -> Unit,
+    private val onClientConnected: (BluetoothDevice) -> Unit = {}
+) {
 
     private val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
     private val bluetoothAdapter: BluetoothAdapter? = bluetoothManager.adapter
@@ -68,6 +73,10 @@ class BleManager(private val context: Context, private val onDeviceFound: (Bluet
 
     fun stopAdvertising() {
         advertiser?.stopAdvertising(advertiseCallback)
+        // Do NOT close GATT server here. We might need it for incoming connections.
+    }
+
+    fun closeServer() {
         gattServer?.close()
     }
 
@@ -188,6 +197,9 @@ class BleManager(private val context: Context, private val onDeviceFound: (Bluet
         override fun onConnectionStateChange(device: BluetoothDevice?, status: Int, newState: Int) {
             super.onConnectionStateChange(device, status, newState)
             Log.d(TAG, "Server connection state for ${device?.address}: $newState")
+            if (newState == BluetoothProfile.STATE_CONNECTED && device != null) {
+                onClientConnected(device)
+            }
         }
 
         override fun onCharacteristicWriteRequest(
