@@ -31,6 +31,7 @@ class MainActivity : ComponentActivity() {
     private var discoveredDevices = mutableListOf<BluetoothDevice>()
     private var isController = true
     private var isWorking = false
+    private var localDeviceId = 0
 
     // UI Components
     private lateinit var startText: TextView
@@ -109,17 +110,21 @@ class MainActivity : ComponentActivity() {
         }
 
         bleManager = BleManager(this,
-            onDeviceFound = { device ->
+            onDeviceFound = { device, remoteDeviceId ->
                 if (isWorking && isController) { // Only if we haven't decided role or are Controller
                     if (!discoveredDevices.any { it.address == device.address }) {
-                        discoveredDevices.add(device)
-                        Log.d("MainActivity", "Device found: ${device.address}. Becoming Controller.")
-                        
-                        // We found a device first! We are Controller.
-                        // Stop advertising so we don't confuse others (optional, but good practice)
-                        bleManager.stopAdvertising()
-                        
-                        connectToDevice(device)
+                        // Tie-Breaker Logic
+                        if (remoteDeviceId != -1 && localDeviceId > remoteDeviceId) {
+                            discoveredDevices.add(device)
+                            Log.d("MainActivity", "Device found: ${device.address} with ID $remoteDeviceId. My ID: $localDeviceId. I WIN -> Becoming Controller.")
+                            
+                            // We found a device AND we won the tie-breaker! We are Controller.
+                            bleManager.stopAdvertising()
+                            connectToDevice(device)
+                        } else {
+                            Log.d("MainActivity", "Device found: ${device.address} with ID $remoteDeviceId. My ID: $localDeviceId. I LOSE -> Waiting to be Controlee.")
+                            // We lost the tie-breaker. Do nothing. Wait for them to connect to us.
+                        }
                     }
                 }
             },
@@ -163,18 +168,16 @@ class MainActivity : ComponentActivity() {
         // 2. Start Scanning (to find others -> become Controller)
         
         // Default state: We are open to being either.
-        // Let's assume isController = true initially to allow scanning logic, 
-        // but we will flip it if we receive data first.
         isController = true 
-
-        Log.d("MainActivity", "Starting Dynamic Role Search...")
+        localDeviceId = kotlin.math.abs(Random.nextInt())
+        Log.d("MainActivity", "Starting Dynamic Role Search... My ID: $localDeviceId")
 
         // Start Advertising (Controlee side)
         lifecycleScope.launch {
             try {
                 val localAddress = uwbManager.prepareControleeSession()
                 bleManager.setLocalUwbAddress(localAddress.address)
-                bleManager.startAdvertising()
+                bleManager.startAdvertising(localDeviceId)
                 Log.d("MainActivity", "Advertising started (Candidate Controlee)")
             } catch (e: Exception) {
                 Log.e("MainActivity", "Failed to start advertising", e)

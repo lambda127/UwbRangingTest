@@ -26,7 +26,7 @@ import java.util.UUID
 @SuppressLint("MissingPermission") // Permissions are checked in MainActivity
 class BleManager(
     private val context: Context,
-    private val onDeviceFound: (BluetoothDevice) -> Unit,
+    private val onDeviceFound: (BluetoothDevice, Int) -> Unit,
     private val onDataReceived: (String, ByteArray) -> Unit,
     private val onClientConnected: (BluetoothDevice) -> Unit = {}
 ) {
@@ -46,7 +46,7 @@ class BleManager(
     private val connectedGatts = mutableMapOf<String, BluetoothGatt>()
     private var pendingLocalAddress: ByteArray? = null
 
-    fun startAdvertising() {
+    fun startAdvertising(deviceId: Int) {
         val settings = AdvertiseSettings.Builder()
             .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
             .setConnectable(true)
@@ -57,6 +57,7 @@ class BleManager(
         val data = AdvertiseData.Builder()
             .setIncludeDeviceName(false)
             .addServiceUuid(ParcelUuid(SERVICE_UUID))
+            .addServiceData(ParcelUuid(SERVICE_UUID), java.nio.ByteBuffer.allocate(4).putInt(deviceId).array())
             .build()
 
         val scanResponse = AdvertiseData.Builder()
@@ -156,8 +157,14 @@ class BleManager(
 
     private val scanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult?) {
-            result?.device?.let {
-                onDeviceFound(it)
+            result?.device?.let { device ->
+                val serviceData = result.scanRecord?.getServiceData(ParcelUuid(SERVICE_UUID))
+                val remoteDeviceId = if (serviceData != null && serviceData.size == 4) {
+                    java.nio.ByteBuffer.wrap(serviceData).int
+                } else {
+                    -1
+                }
+                onDeviceFound(device, remoteDeviceId)
             }
         }
     }
