@@ -33,7 +33,7 @@ class UwbManager(private val context: Context, private val onRangingResult: (Flo
         private const val TAG = "UwbManager"
     }
 
-    fun startRangingAsController(peerAddressBytes: ByteArray, sessionId: Int, onSessionStarted: (UwbAddress) -> Unit) {
+    fun startRangingAsController(peerAddressBytes: ByteArray, sessionId: Int, sessionKey: ByteArray, onSessionStarted: (UwbAddress) -> Unit) {
         scope.launch {
             try {
                 // Ensure manager is initialized
@@ -53,7 +53,7 @@ class UwbManager(private val context: Context, private val onRangingResult: (Flo
                     uwbConfigType = RangingParameters.CONFIG_UNICAST_DS_TWR,
                     sessionId = sessionId,
                     subSessionId = 0,
-                    sessionKeyInfo = null,
+                    sessionKeyInfo = sessionKey,
                     subSessionKeyInfo = null,
                     complexChannel = null,
                     peerDevices = listOf(uwbDevice),
@@ -94,7 +94,7 @@ class UwbManager(private val context: Context, private val onRangingResult: (Flo
         return scope.localAddress
     }
 
-    fun startRangingWithPreparedSession(peerAddressBytes: ByteArray, sessionId: Int) {
+    fun startRangingWithPreparedSession(peerAddressBytes: ByteArray, sessionId: Int, sessionKey: ByteArray) {
         scope.launch {
             try {
                 val clientSessionScope = controleeSessionScope ?: run {
@@ -111,7 +111,7 @@ class UwbManager(private val context: Context, private val onRangingResult: (Flo
                     uwbConfigType = RangingParameters.CONFIG_UNICAST_DS_TWR,
                     sessionId = sessionId,
                     subSessionId = 0,
-                    sessionKeyInfo = null,
+                    sessionKeyInfo = sessionKey,
                     subSessionKeyInfo = null,
                     complexChannel = null,
                     peerDevices = listOf(uwbDevice),

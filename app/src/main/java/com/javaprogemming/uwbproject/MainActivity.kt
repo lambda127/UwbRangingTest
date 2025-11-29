@@ -59,24 +59,27 @@ class MainActivity : ComponentActivity() {
                 try {
                     Log.d("MainActivity", "Data received from $address: ${data.size} bytes")
                     // Distinguish between Read Result (Peer Address) and Write Result (Params)
+                    // Distinguish between Read Result (Peer Address) and Write Result (Params)
                     if (data.size == 2 || data.size == 8) { // Address size can vary (2 for short, 8 for extended)
                         // This is Peer Address (Read by Controller)
                         val peerAddressBytes = data
                         val sessionId = Random.nextInt()
+                        val sessionKey = Random.nextBytes(8) // Generate 8-byte session key
                         
                         statusMessage = "Read Peer Address. Starting Controller..."
                         Log.d("MainActivity", "Read Peer Address: ${peerAddressBytes.contentToString()}. Starting Controller with Session ID: $sessionId")
                         
                         // 1. Start Ranging as Controller
-                        uwbManager.startRangingAsController(peerAddressBytes, sessionId) { localAddress ->
-                            // 2. Send Local Address + SessionID to Peer
+                        uwbManager.startRangingAsController(peerAddressBytes, sessionId, sessionKey) { localAddress ->
+                            // 2. Send Local Address + SessionID + SessionKey to Peer
                             lifecycleScope.launch {
                                 val myAddrBytes = localAddress.address
-                                val buffer = ByteBuffer.allocate(4 + 1 + myAddrBytes.size)
+                                val buffer = ByteBuffer.allocate(4 + 8 + 1 + myAddrBytes.size) // Int(4) + Key(8) + Len(1) + Addr(var)
                                 buffer.putInt(sessionId)
+                                buffer.put(sessionKey)
                                 buffer.put(myAddrBytes.size.toByte())
                                 buffer.put(myAddrBytes)
-                                Log.d("MainActivity", "Sending Params to $address: SessionID=$sessionId, MyAddr=${myAddrBytes.contentToString()}")
+                                Log.d("MainActivity", "Sending Params to $address: SessionID=$sessionId, Key=${sessionKey.contentToString()}, MyAddr=${myAddrBytes.contentToString()}")
                                 bleManager.writeData(address, buffer.array())
                             }
                         }
@@ -84,13 +87,15 @@ class MainActivity : ComponentActivity() {
                         // This is Params (Received by Controlee)
                         val buffer = ByteBuffer.wrap(data)
                         val sessionId = buffer.int
+                        val sessionKey = ByteArray(8)
+                        buffer.get(sessionKey)
                         val addrLen = buffer.get().toInt()
                         val addrBytes = ByteArray(addrLen)
                         buffer.get(addrBytes)
                         
                         statusMessage = "Received params. Starting Controlee..."
-                        Log.d("MainActivity", "Received Params: SessionID=$sessionId, PeerAddr=${addrBytes.contentToString()}. Starting Controlee...")
-                        uwbManager.startRangingWithPreparedSession(addrBytes, sessionId)
+                        Log.d("MainActivity", "Received Params: SessionID=$sessionId, Key=${sessionKey.contentToString()}, PeerAddr=${addrBytes.contentToString()}. Starting Controlee...")
+                        uwbManager.startRangingWithPreparedSession(addrBytes, sessionId, sessionKey)
                     }
                 } catch (e: Exception) {
                     Log.e("MainActivity", "Error parsing data", e)
