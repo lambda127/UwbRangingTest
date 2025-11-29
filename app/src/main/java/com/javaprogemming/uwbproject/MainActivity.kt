@@ -24,6 +24,8 @@ import kotlinx.coroutines.launch
 import java.nio.ByteBuffer
 import kotlin.random.Random
 
+
+
 class MainActivity : ComponentActivity() {
 
     private lateinit var bleManager: BleManager
@@ -257,5 +259,5 @@ class MainActivity : ComponentActivity() {
         if (!permissions.all { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }) {
             launcher.launch(permissions.toTypedArray())
         }
-    }
+    }s
 }
