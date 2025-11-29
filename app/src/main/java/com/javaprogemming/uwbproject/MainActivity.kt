@@ -13,18 +13,6 @@ import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import android.widget.FrameLayout
 import android.widget.ImageView
-import android.widget.RelativeLayout
-import android.widget.TextView
-import android.widget.Toast
-import androidx.activity.ComponentActivity
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.launch
-import java.nio.ByteBuffer
-import kotlin.random.Random
-
-class MainActivity : ComponentActivity() {
 
     private lateinit var bleManager: BleManager
     private lateinit var uwbManager: UwbManager
@@ -56,7 +44,16 @@ class MainActivity : ComponentActivity() {
         overlayIntro = findViewById(R.id.overlayIntro)
         redDot = findViewById(R.id.redDot)
         targetDot = findViewById(R.id.targetDot)
+        targetDot = findViewById(R.id.targetDot)
         bottomPanel = findViewById(R.id.bottomPanel)
+
+        // Handle Window Insets for Edge-to-Edge
+        val mainLayout = findViewById<RelativeLayout>(R.id.mainLayout)
+        ViewCompat.setOnApplyWindowInsetsListener(mainLayout) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+            insets
+        }
 
         // Intro Animation
         if (followText != null) {
