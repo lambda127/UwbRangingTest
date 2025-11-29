@@ -19,7 +19,7 @@
         android:layout_centerInParent="true"
         android:layout_marginBottom="60dp"
         android:background="#0000FF"
-        android:animation="@anim/dot_rotate_0" />
+ />
 
     <View
         android:id="@+id/dot2"
@@ -28,7 +28,7 @@
         android:layout_centerInParent="true"
         android:layout_marginBottom="60dp"
         android:background="#0000FF"
-        android:animation="@anim/dot_rotate_45" />
+ />
 
     <View
         android:id="@+id/dot3"
@@ -37,7 +37,7 @@
         android:layout_centerInParent="true"
         android:layout_marginBottom="60dp"
         android:background="#0000FF"
-        android:animation="@anim/dot_rotate_90" />
+ />
 
     <View
         android:id="@+id/dot4"
@@ -46,7 +46,7 @@
         android:layout_centerInParent="true"
         android:layout_marginBottom="60dp"
         android:background="#0000FF"
-        android:animation="@anim/dot_rotate_135" />
+ />
 
     <View
         android:id="@+id/dot5"
@@ -55,7 +55,7 @@
         android:layout_centerInParent="true"
         android:layout_marginBottom="60dp"
         android:background="#0000FF"
-        android:animation="@anim/dot_rotate_180" />
+ />
 
     <View
         android:id="@+id/dot6"
@@ -64,7 +64,7 @@
         android:layout_centerInParent="true"
         android:layout_marginBottom="60dp"
         android:background="#0000FF"
-        android:animation="@anim/dot_rotate_225" />
+ />
 
     <View
         android:id="@+id/dot7"
@@ -73,7 +73,7 @@
         android:layout_centerInParent="true"
         android:layout_marginBottom="60dp"
         android:background="#0000FF"
-        android:animation="@anim/dot_rotate_270" />
+ />
 
     <View
         android:id="@+id/dot8"
@@ -82,5 +82,5 @@
         android:layout_centerInParent="true"
         android:layout_marginBottom="60dp"
         android:background="#0000FF"
-        android:animation="@anim/dot_rotate_315" />
+ />
 </RelativeLayout>
