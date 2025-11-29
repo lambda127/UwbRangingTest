@@ -259,5 +259,5 @@ class MainActivity : ComponentActivity() {
         if (!permissions.all { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }) {
             launcher.launch(permissions.toTypedArray())
         }
-    }s
+    }
 }
