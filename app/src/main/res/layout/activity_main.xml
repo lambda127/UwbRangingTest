@@ -37,9 +37,9 @@
 
     <View
         android:id="@+id/redDot"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:background="#FF0000"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:background="@drawable/user_location"
         android:layout_centerInParent="true"
         android:visibility="invisible" />
 
@@ -47,7 +47,7 @@
         android:id="@+id/targetDot"
         android:layout_width="20dp"
         android:layout_height="20dp"
-        android:src="@drawable/dot_green"
+        android:src="@drawable/dot_blue"
         android:layout_centerInParent="true"
         android:visibility="invisible" />
 
@@ -55,7 +55,7 @@
         android:id="@+id/overlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#88000000"
+        android:background="#EFEFEF"
         android:visibility="gone" />
 
     <include
@@ -66,7 +66,7 @@
     <LinearLayout
         android:id="@+id/bottomPanel"
         android:layout_width="match_parent"
-        android:layout_height="130dp"
+        android:layout_height="64dp"
         android:layout_alignParentBottom="true"
         android:orientation="horizontal"
         android:gravity="center"
@@ -78,13 +78,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="시작"
-            android:textSize="20dp"
-            android:textColor="#FFFFFF"
-            android:paddingLeft="80dp"
-            android:paddingRight="80dp"
-            android:paddingTop="30dp"
-            android:paddingBottom="30dp"
-            android:layout_margin="20dp"
+            android:textSize="12pt"
+            android:textColor="000000"
+            android:layout_margin="17dp"
             android:gravity="center"
             android:clickable="true"
             android:focusable="true"
@@ -95,13 +91,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="종료"
-            android:textSize="20dp"
-            android:textColor="#FFFFFF"
-            android:paddingLeft="80dp"
-            android:paddingRight="80dp"
-            android:paddingTop="30dp"
-            android:paddingBottom="30dp"
-            android:layout_margin="20dp"
+            android:textSize="12pt"
+            android:textColor="#000000"
+            android:layout_margin="17dp"
             android:gravity="center"
             android:clickable="true"
             android:focusable="true"
