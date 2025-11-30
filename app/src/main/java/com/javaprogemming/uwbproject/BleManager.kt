@@ -28,7 +28,8 @@ class BleManager(
     private val context: Context,
     private val onDeviceFound: (BluetoothDevice, Int) -> Unit,
     private val onDataReceived: (String, ByteArray) -> Unit,
-    private val onClientConnected: (BluetoothDevice) -> Unit = {}
+    private val onClientConnected: (BluetoothDevice) -> Unit = {},
+    private val onServicesDiscovered: (BluetoothDevice) -> Unit = {}
 ) {
 
     private val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
@@ -73,7 +74,11 @@ class BleManager(
     }
 
     fun stopAdvertising() {
-        advertiser?.stopAdvertising(advertiseCallback)
+        try {
+            advertiser?.stopAdvertising(advertiseCallback)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to stop advertising", e)
+        }
         // Do NOT close GATT server here. We might need it for incoming connections.
     }
 
@@ -98,7 +103,11 @@ class BleManager(
     }
 
     fun stopScanning() {
-        scanner?.stopScan(scanCallback)
+        try {
+            scanner?.stopScan(scanCallback)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to stop scanning", e)
+        }
     }
 
     fun connectToDevice(device: BluetoothDevice) {
@@ -114,7 +123,11 @@ class BleManager(
                 characteristic.value = data
                 characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
                 gatt.writeCharacteristic(characteristic)
+            } else {
+                 Log.e(TAG, "Characteristic not found for writeData")
             }
+        } else {
+            Log.e(TAG, "GATT not found for $deviceAddress")
         }
     }
 
@@ -139,10 +152,18 @@ class BleManager(
         val gatt = connectedGatts[deviceAddress]
         if (gatt != null) {
             val service = gatt.getService(SERVICE_UUID)
-            val characteristic = service?.getCharacteristic(CHARACTERISTIC_UUID)
+            if (service == null) {
+                Log.e(TAG, "Service not found for readUwbAddress. Services discovered?")
+                return
+            }
+            val characteristic = service.getCharacteristic(CHARACTERISTIC_UUID)
             if (characteristic != null) {
                 gatt.readCharacteristic(characteristic)
+            } else {
+                Log.e(TAG, "Characteristic not found for readUwbAddress")
             }
+        } else {
+            Log.e(TAG, "GATT not found for $deviceAddress")
         }
     }
 
@@ -165,6 +186,12 @@ class BleManager(
                 } else {
                     -1
                 }
+                
+                if (remoteDeviceId == -1) {
+                    // Debugging for missing ID
+                    // Log.v(TAG, "Device found but ID missing: ${device.address}. ServiceData: ${serviceData?.size} bytes")
+                }
+                
                 onDeviceFound(device, remoteDeviceId)
             }
         }
@@ -258,6 +285,9 @@ class BleManager(
 
         override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
             Log.d(TAG, "Services discovered for ${gatt?.device?.address}: status=$status")
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                gatt?.device?.let { onServicesDiscovered(it) }
+            }
         }
 
         override fun onCharacteristicRead(
@@ -267,13 +297,7 @@ class BleManager(
         ) {
             if (status == BluetoothGatt.GATT_SUCCESS && characteristic.uuid == CHARACTERISTIC_UUID) {
                 Log.d(TAG, "Read characteristic from ${gatt.device.address}: ${characteristic.value.size} bytes")
-                onDataReceived(gatt.device.address, characteristic.value) // Reuse onDataReceived for Read result too?
-                // Or maybe a separate callback?
-                // For simplicity, let's assume onDataReceived handles both "Received via Write" and "Received via Read".
-                // But wait, the format might be different.
-                // Advertiser shares ONLY Address.
-                // Controller shares Address + SessionID.
-                // We can distinguish by length or context.
+                onDataReceived(gatt.device.address, characteristic.value)
             }
         }
     }

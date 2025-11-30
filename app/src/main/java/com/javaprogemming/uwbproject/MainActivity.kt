@@ -123,8 +123,13 @@ class MainActivity : ComponentActivity() {
             onDeviceFound = { device, remoteDeviceId ->
                 if (isWorking && isController) { // Only if we haven't decided role or are Controller
                     if (!discoveredDevices.any { it.address == device.address }) {
+                        if (remoteDeviceId == -1) {
+                            Log.w("MainActivity", "Device found but ID is -1. Ignoring: ${device.address}")
+                            return@BleManager
+                        }
+                        
                         // Tie-Breaker Logic
-                        if (remoteDeviceId != -1 && localDeviceId > remoteDeviceId) {
+                        if (localDeviceId > remoteDeviceId) {
                             discoveredDevices.add(device)
                             Log.d("MainActivity", "Device found: ${device.address} with ID $remoteDeviceId. My ID: $localDeviceId. I WIN -> Becoming Controller.")
                             
@@ -149,6 +154,12 @@ class MainActivity : ComponentActivity() {
                     isController = false
                     bleManager.stopScanning()
                     // Keep advertising/server open so they can interact.
+                }
+            },
+            onServicesDiscovered = { device ->
+                Log.d("MainActivity", "Services discovered for ${device.address}. Reading UWB Address...")
+                lifecycleScope.launch {
+                    bleManager.readUwbAddress(device.address)
                 }
             }
         )
@@ -211,12 +222,7 @@ class MainActivity : ComponentActivity() {
     private fun connectToDevice(device: BluetoothDevice) {
         Log.d("MainActivity", "Connecting to ${device.address}")
         bleManager.connectToDevice(device)
-        
-        lifecycleScope.launch {
-            kotlinx.coroutines.delay(2000) // Wait for connection
-            Log.d("MainActivity", "Reading UWB Address from ${device.address}")
-            bleManager.readUwbAddress(device.address)
-        }
+        // Reading UWB Address is now handled in onServicesDiscovered
     }
 
     private fun handleDataReceived(address: String, data: ByteArray) {
