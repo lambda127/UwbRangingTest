@@ -305,26 +305,21 @@ class MainActivity : ComponentActivity() {
         val maxDistance = 5.0f // Max distance in meters to map to screen edge
         val screenCenterX = redDot.x + redDot.width / 2
         val screenCenterY = redDot.y + redDot.height / 2
-        val maxScreenRadius = 300f // Approximate radius in pixels
+        
+        // Use dynamic screen radius (half of the shorter screen dimension, usually width)
+        val mainLayout = findViewById<View>(R.id.mainLayout)
+        val maxScreenRadius = (Math.min(mainLayout.width, mainLayout.height) / 2f) * 0.8f
 
-        // Calculate position offset
-        // Azimuth is in radians. 0 is forward? Let's assume standard math: 0 is East, but UWB might be different.
-        // Usually UWB azimuth 0 is straight ahead (North in screen coordinates if phone is portrait).
-        // Let's assume 0 is Up (Negative Y).
-        
-        // Convert azimuth to screen coordinates
-        // x = distance * sin(azimuth)
-        // y = distance * cos(azimuth)
-        // We need to scale distance.
-        
         val scale = Math.min(distance, maxDistance) / maxDistance * maxScreenRadius
         
-        val offsetX = scale * kotlin.math.sin(azimuth.toDouble()).toFloat()
+        val offsetX = -scale * kotlin.math.sin(azimuth.toDouble()).toFloat() // Flip X for CCW azimuth
         val offsetY = -scale * kotlin.math.cos(azimuth.toDouble()).toFloat() // Negative Y is Up
 
         targetDot.x = screenCenterX + offsetX - targetDot.width / 2
         targetDot.y = screenCenterY + offsetY - targetDot.height / 2
         targetDot.visibility = View.VISIBLE
+        
+        Log.d("MainActivity", "Update Dot: Dist=$distance, Az=${Math.toDegrees(azimuth.toDouble())}, OffX=$offsetX, OffY=$offsetY")
     }
 
     private fun checkPermissions() {
