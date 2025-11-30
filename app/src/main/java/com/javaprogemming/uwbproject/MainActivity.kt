@@ -103,7 +103,7 @@ class MainActivity : ComponentActivity() {
                 sb.append("Dist: %.2f m".format(distance))
             }
             if (azimuth != null) {
-                sb.append(", Az: %.0f°".format(Math.toDegrees(azimuth.toDouble())))
+                sb.append(", Az: %.0f°".format(azimuth))
             }
             
             val status = sb.toString()
@@ -301,7 +301,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun updateTargetDotPosition(distance: Float, azimuth: Float) {
+    private fun updateTargetDotPosition(distance: Float, azimuthDegrees: Float) {
         val maxDistance = 5.0f // Max distance in meters to map to screen edge
         val screenCenterX = redDot.x + redDot.width / 2
         val screenCenterY = redDot.y + redDot.height / 2
@@ -312,14 +312,17 @@ class MainActivity : ComponentActivity() {
 
         val scale = Math.min(distance, maxDistance) / maxDistance * maxScreenRadius
         
-        val offsetX = -scale * kotlin.math.sin(azimuth.toDouble()).toFloat() // Flip X for CCW azimuth
-        val offsetY = -scale * kotlin.math.cos(azimuth.toDouble()).toFloat() // Negative Y is Up
+        // Convert degrees to radians for trig functions
+        val azimuthRadians = Math.toRadians(azimuthDegrees.toDouble())
+        
+        val offsetX = -scale * kotlin.math.sin(azimuthRadians).toFloat() // Flip X for CCW azimuth
+        val offsetY = -scale * kotlin.math.cos(azimuthRadians).toFloat() // Negative Y is Up
 
         targetDot.x = screenCenterX + offsetX - targetDot.width / 2
         targetDot.y = screenCenterY + offsetY - targetDot.height / 2
         targetDot.visibility = View.VISIBLE
         
-        Log.d("MainActivity", "Update Dot: Dist=$distance, Az=${Math.toDegrees(azimuth.toDouble())}, OffX=$offsetX, OffY=$offsetY")
+        Log.d("MainActivity", "Update Dot: Dist=$distance, Az=${azimuthDegrees}, OffX=$offsetX, OffY=$offsetY")
     }
 
     private fun checkPermissions() {
